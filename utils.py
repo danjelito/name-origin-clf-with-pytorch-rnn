@@ -3,6 +3,7 @@ import string
 import torch
 import random
 import glob
+import random
 from typing import List, Dict
 
 ALL_LETTERS = string.ascii_letters + " .,;"
@@ -60,8 +61,21 @@ def text_to_tensor(text: str) -> torch.Tensor:
     return tensor
 
 
+def get_random_training_sample(category_lines, all_categories):
+    """Return a random (category, name)."""
+    # select random category
+    category = random.choice(all_categories)
+    # select random name from this category
+    name = random.choice(category_lines[category])
+    category_tensor = torch.tensor([all_categories.index(category)], dtype=torch.int64)
+    name_tensor = text_to_tensor(name)
+    return category, name, category_tensor, name_tensor
+
+
 if __name__ == "__main__":
     print(unicode_to_ascii("Café Münster"))
     print(letter_to_index("a"))
     print(letter_to_tensor("a"))
     print(text_to_tensor("abc"))
+    all_categories, category_lines = load_data()
+    print(get_random_training_sample(category_lines, all_categories))
