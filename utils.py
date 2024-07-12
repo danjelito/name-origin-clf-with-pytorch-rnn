@@ -4,6 +4,7 @@ import torch
 import random
 import glob
 import random
+from collections import namedtuple
 from typing import List, Dict
 
 ALL_LETTERS = string.ascii_letters + " .,;"
@@ -19,7 +20,7 @@ def unicode_to_ascii(text: str) -> str:
     )
 
 
-def read_file_as_list(file_path: str) -> List:
+def read_txt_as_list(file_path: str) -> List:
     """Read lines in txt file, return as list."""
     with open(file_path, "r") as file:
         lines = [line.strip() for line in file.readlines()]
@@ -33,7 +34,7 @@ def load_data() -> Dict:
     category_lines = {}
     all_categories = []
     for f in txt_files:
-        names = read_file_as_list(f)
+        names = read_txt_as_list(f)
         names_clean = [unicode_to_ascii(name) for name in names]
         country = f.split("/")[-1].split(".txt")[0]
         category_lines[country] = names_clean
@@ -46,14 +47,14 @@ def letter_to_index(letter: str) -> int:
     return ALL_LETTERS.find(letter)
 
 
-def letter_to_tensor(letter: str) -> torch.Tensor:
+def one_hot_encode_letter(letter: str) -> torch.Tensor:
     """One-hot encode a letter."""
     tensor = torch.zeros(1, N_LETTERS)
     tensor[0, letter_to_index(letter)] = 1
     return tensor
 
 
-def text_to_tensor(text: str) -> torch.Tensor:
+def one_hot_encode_text(text: str) -> torch.Tensor:
     """One-hot encode a text"""
     tensor = torch.zeros(len(text), 1, N_LETTERS)
     for i, letter in enumerate(text):
@@ -68,14 +69,23 @@ def get_random_training_sample(category_lines, all_categories):
     # select random name from this category
     name = random.choice(category_lines[category])
     category_tensor = torch.tensor([all_categories.index(category)], dtype=torch.int64)
-    name_tensor = text_to_tensor(name)
-    return category, name, category_tensor, name_tensor
+    name_tensor = one_hot_encode_text(name)
+    Sample = namedtuple(
+        "Sample", ["category", "name", "category_tensor", "name_tensor"]
+    )
+    return Sample(category, name, category_tensor, name_tensor)
+
+
+def category_from_output(output: int, all_categories: List) -> str:
+    """Return the category with highest value in output."""
+    category_idx = torch.argmax(output).item()
+    return all_categories[category_idx]
 
 
 if __name__ == "__main__":
     print(unicode_to_ascii("Café Münster"))
     print(letter_to_index("a"))
-    print(letter_to_tensor("a"))
-    print(text_to_tensor("abc"))
+    print(one_hot_encode_letter("a"))
+    print(one_hot_encode_text("abc"))
     all_categories, category_lines = load_data()
     print(get_random_training_sample(category_lines, all_categories))

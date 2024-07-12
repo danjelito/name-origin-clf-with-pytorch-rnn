@@ -1,18 +1,17 @@
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from utils import ALL_LETTERS, N_LETTERS
+from utils import N_LETTERS
 from utils import (
     load_data,
-    letter_to_tensor,
-    text_to_tensor,
     get_random_training_sample,
+    category_from_output,
 )
 
 
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size) -> None:
-        super().__init__()
+        super(RNN, self).__init__()
         self.hidden_size = hidden_size
         self.i2h = nn.Linear(
             in_features=input_size + hidden_size, out_features=hidden_size
@@ -33,18 +32,12 @@ class RNN(nn.Module):
         return torch.zeros(1, self.hidden_size)
 
 
-def category_from_output(output):
-    """Return the category with highest value in output."""
-    category_idx = torch.argmax(output).item()
-    return all_categories[category_idx]
-
-
 # define training step
-def train(text_tensor, category_tensor):
+def train(name_tensor, category_tensor):
     hidden_tensor = rnn.init_hidden()
     # iterate through each char in name
-    for i in range(text_tensor.shape[0]):
-        output, hidden_tensor = rnn(text_tensor[i], hidden_tensor)
+    for i in range(name_tensor.shape[0]):
+        output, hidden_tensor = rnn(name_tensor[i], hidden_tensor)
     loss = criterion(output, category_tensor)
     optimizer.zero_grad()
     loss.backward()
@@ -62,7 +55,7 @@ rnn = RNN(input_size=N_LETTERS, hidden_size=64, output_size=n_categories)
 criterion = nn.NLLLoss()
 optimizer = torch.optim.SGD(
     rnn.parameters(),
-    lr=0.001,
+    lr=0.005,
 )
 
 # training loop
@@ -71,16 +64,22 @@ all_losses = []
 plot_steps, print_steps = 1000, 5000
 n_iter = 200_000
 for i in range(n_iter):
-    category, name, category_tensor, name_tensor = get_random_training_sample(
-        category_lines, all_categories
-    )
+    # get 1 random name
+    sample = get_random_training_sample(category_lines, all_categories)
+    category = sample.category
+    name = sample.name
+    category_tensor = sample.category_tensor
+    name_tensor = sample.name_tensor
+    # train
     output, loss = train(name_tensor, category_tensor)
     current_loss += loss
+    # append loss
     if (i + 1) % plot_steps == 0:
         all_losses.append(current_loss / plot_steps)
         current_loss = 0
+    # print loss
     if (i + 1) % print_steps == 0:
-        guess = category_from_output(output)
+        guess = category_from_output(output, all_categories)
         correct = "CORRECT" if guess == category else f"WRONG"
         print(
             f"Iteration: {i + 1}/{n_iter} ({(i + 1) / n_iter:.0%}) | Loss: {loss:.4f} | Name: {name} | Predicted: {guess} | Actual: {category} | Result: {correct}"
